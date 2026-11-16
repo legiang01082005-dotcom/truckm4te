@@ -3,9 +3,8 @@ let activePrice = 3400000;
 let isEscrowFunded = false;
 let selectedTrackingId = "TM-801";
 let trackingMapInstance = null;
-let currentUser = null; // Lưu tài khoản đang đăng nhập
+let currentUser = null;
 
-// Cấu hình hệ thống (Admin có thể thay đổi)
 let systemConfig = {
   platformFeePercent: 4,
   basePricePerTon: 520000,
@@ -226,7 +225,6 @@ const defaultTrackingList = [
   }
 ];
 
-// Đọc dữ liệu từ LocalStorage (Nếu chưa có thì nạp dữ liệu gốc)
 let emptyTruckTrips = JSON.parse(localStorage.getItem('tm4_emptyTruckTrips')) || JSON.parse(JSON.stringify(defaultEmptyTruckTrips));
 let shipperOrders = JSON.parse(localStorage.getItem('tm4_shipperOrders')) || JSON.parse(JSON.stringify(defaultShipperOrders));
 let usersDB = JSON.parse(localStorage.getItem('tm4_usersDB')) || JSON.parse(JSON.stringify(defaultUsersDB));
@@ -240,14 +238,37 @@ function saveDatabase() {
 }
 
 // ==========================================
-// 1. CƠ CHẾ CHUYỂN TAB SPA
+// 1. CƠ CHẾ CHUYỂN TAB SPA & MENU DI ĐỘNG
 // ==========================================
+function toggleMobileMenu() {
+  const drawer = document.getElementById('mobileMenuDrawer');
+  const icon = document.getElementById('mobileMenuIcon');
+  if (drawer.classList.contains('hidden')) {
+    drawer.classList.remove('hidden');
+    icon.className = "fa-solid fa-xmark text-lg";
+  } else {
+    drawer.classList.add('hidden');
+    icon.className = "fa-solid fa-bars text-base";
+  }
+}
+
+function closeMobileMenu() {
+  const drawer = document.getElementById('mobileMenuDrawer');
+  const icon = document.getElementById('mobileMenuIcon');
+  if (drawer && !drawer.classList.contains('hidden')) {
+    drawer.classList.add('hidden');
+    if (icon) icon.className = "fa-solid fa-bars text-base";
+  }
+}
+
 function switchTab(tabName) {
   if (tabName === 'admin' && (!currentUser || currentUser.role !== 'admin')) {
     alert("Khu vực này chỉ dành cho Quản trị viên (Admin)! Vui lòng đăng nhập tài khoản Admin.");
     openAuthModal('login');
     return;
   }
+
+  closeMobileMenu();
 
   document.querySelectorAll('.view-panel').forEach(panel => {
     panel.classList.add('hidden');
@@ -260,12 +281,31 @@ function switchTab(tabName) {
     activeView.classList.add('block');
   }
 
+  // Highlight Desktop Menu
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.remove('text-emerald-700', 'bg-emerald-50');
   });
   const activeNavBtn = document.getElementById(`nav-${tabName}`);
   if (activeNavBtn && tabName !== 'admin') {
     activeNavBtn.classList.add('text-emerald-700', 'bg-emerald-50');
+  }
+
+  // Highlight Mobile Drawer Menu
+  document.querySelectorAll('.mnav-btn').forEach(btn => {
+    btn.classList.remove('bg-emerald-50', 'text-emerald-700');
+  });
+  const activeMnavBtn = document.getElementById(`mnav-${tabName}`);
+  if (activeMnavBtn && tabName !== 'admin') {
+    activeMnavBtn.classList.add('bg-emerald-50', 'text-emerald-700');
+  }
+
+  // Highlight Mobile Bottom Bar
+  document.querySelectorAll('.bnav-btn').forEach(btn => {
+    btn.classList.remove('text-emerald-700', 'bg-emerald-50/80');
+  });
+  const activeBnavBtn = document.getElementById(`bnav-${tabName}`);
+  if (activeBnavBtn) {
+    activeBnavBtn.classList.add('text-emerald-700', 'bg-emerald-50/80');
   }
 
   if (tabName === 'tracking') {
@@ -282,6 +322,7 @@ function switchTab(tabName) {
 // 2. CHỨC NĂNG ĐĂNG NHẬP, ĐĂNG KÝ & PHÂN QUYỀN
 // ==========================================
 function openAuthModal(mode) {
+  closeMobileMenu();
   document.getElementById('modalAuth').classList.remove('hidden');
   const formLogin = document.getElementById('formLogin');
   const formRegister = document.getElementById('formRegister');
@@ -418,36 +459,40 @@ function logoutAccount() {
 function updateAuthHeaderUI() {
   const authArea = document.getElementById('authHeaderArea');
   const navAdminBtn = document.getElementById('nav-admin');
+  const mnavAdminBtn = document.getElementById('mnav-admin');
 
   if (currentUser) {
     if (currentUser.role === 'admin') {
       navAdminBtn.classList.remove('hidden');
+      if (mnavAdminBtn) mnavAdminBtn.classList.remove('hidden');
     } else {
       navAdminBtn.classList.add('hidden');
+      if (mnavAdminBtn) mnavAdminBtn.classList.add('hidden');
     }
 
     const roleBadge = currentUser.role === 'admin'
-      ? `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-extrabold text-[10px]">ADMIN</span>`
+      ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-extrabold text-[10px]">ADMIN</span>`
       : (currentUser.role === 'shipper'
-        ? `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-extrabold text-[10px]">CHỦ HÀNG</span>`
-        : `<span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-extrabold text-[10px]">NHÀ XE</span>`);
+        ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-extrabold text-[10px] hidden sm:inline">CHỦ HÀNG</span>`
+        : `<span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-extrabold text-[10px] hidden sm:inline">NHÀ XE</span>`);
 
     authArea.innerHTML = `
-      <div class="flex items-center gap-2 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 text-xs">
+      <div class="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200 text-xs">
         ${roleBadge}
-        <span class="font-bold text-slate-800 max-w-[130px] truncate">${currentUser.fullName}</span>
-        <button onclick="logoutAccount()" title="Đăng xuất" class="text-red-500 hover:text-red-700 font-bold ml-1">
+        <span class="font-bold text-slate-800 max-w-[75px] sm:max-w-[120px] truncate">${currentUser.fullName}</span>
+        <button onclick="logoutAccount()" title="Đăng xuất" class="text-red-500 hover:text-red-700 font-bold px-1">
           <i class="fa-solid fa-right-from-bracket"></i>
         </button>
       </div>
     `;
   } else {
     navAdminBtn.classList.add('hidden');
+    if (mnavAdminBtn) mnavAdminBtn.classList.add('hidden');
     authArea.innerHTML = `
-      <button onclick="openAuthModal('login')" class="border border-emerald-300 text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+      <button onclick="openAuthModal('login')" class="border border-emerald-300 text-emerald-700 hover:bg-emerald-50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition">
         Đăng nhập
       </button>
-      <button onclick="openAuthModal('register')" class="bg-emerald-600 text-white hover:bg-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm hidden sm:inline-block">
+      <button onclick="openAuthModal('register')" class="bg-emerald-600 text-white hover:bg-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm hidden md:inline-block">
         Đăng ký
       </button>
     `;
@@ -464,11 +509,11 @@ function changeRole(role) {
   const isShipper = role === 'shipper';
 
   if (isShipper) {
-    btnShipper.className = "px-2.5 py-1 rounded-lg bg-emerald-600 text-white transition shadow-sm";
-    btnCarrier.className = "px-2.5 py-1 rounded-lg text-slate-600 hover:text-emerald-700 transition";
+    btnShipper.className = "px-2 sm:px-2.5 py-1 rounded-lg bg-emerald-600 text-white transition shadow-sm";
+    btnCarrier.className = "px-2 sm:px-2.5 py-1 rounded-lg text-slate-600 hover:text-emerald-700 transition";
   } else {
-    btnCarrier.className = "px-2.5 py-1 rounded-lg bg-emerald-600 text-white transition shadow-sm";
-    btnShipper.className = "px-2.5 py-1 rounded-lg text-slate-600 hover:text-emerald-700 transition";
+    btnCarrier.className = "px-2 sm:px-2.5 py-1 rounded-lg bg-emerald-600 text-white transition shadow-sm";
+    btnShipper.className = "px-2 sm:px-2.5 py-1 rounded-lg text-slate-600 hover:text-emerald-700 transition";
   }
 
   document.getElementById('marketRoleBadge').textContent = isShipper
@@ -544,7 +589,7 @@ function renderMarketCards(list) {
           <span class="text-[10px] text-slate-400 block uppercase font-bold">${isShipper ? 'Giá xe chào' : 'Giá chủ hàng đề xuất'}</span>
           <span class="font-black text-emerald-700 text-sm">${item.price.toLocaleString('vi-VN')} đ</span>
         </div>
-        <button onclick="openBiddingFor(${item.id})" class="px-3 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition">
+        <button onclick="openBiddingFor(${item.id})" class="px-3.5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition">
           ${isShipper ? 'Đặt xe & Thương lượng' : 'Nhận ghép & Chào giá'}
         </button>
       </div>
@@ -596,12 +641,12 @@ function updateBiddingByRole() {
 
   document.getElementById('biddingChatLog').innerHTML = isShipper
     ? `
-      <div class="p-2.5 rounded-xl bg-slate-100 text-slate-700 max-w-[80%]"><b>Hệ thống AI:</b> Đã ghép tuyến phù hợp 97%. Độ lệch lộ trình 3.2% so với cung đường gốc.</div>
-      <div class="p-2.5 rounded-xl bg-slate-100 text-slate-700 max-w-[80%]"><b>Nhà xe Hùng Phát:</b> Xe mình 8 tấn thùng bạt quay đầu về Quy Nhơn chiều nay, nhận chở hàng của bạn giá 3.400.000đ bao bến bãi nhé.</div>
+      <div class="p-2.5 rounded-xl bg-slate-100 text-slate-700 max-w-[85%]"><b>Hệ thống AI:</b> Đã ghép tuyến phù hợp 97%. Độ lệch lộ trình 3.2% so với cung đường gốc.</div>
+      <div class="p-2.5 rounded-xl bg-slate-100 text-slate-700 max-w-[85%]"><b>Nhà xe Hùng Phát:</b> Xe mình 8 tấn thùng bạt quay đầu về Quy Nhơn chiều nay, nhận chở hàng của bạn giá 3.400.000đ bao bến bãi nhé.</div>
     `
     : `
-      <div class="p-2.5 rounded-xl bg-slate-100 text-slate-700 max-w-[80%]"><b>Hệ thống AI:</b> Đơn hàng 6 tấn nông sản nằm ngay trên trục đường quay đầu của xe bạn (lệch 2.8%).</div>
-      <div class="p-2.5 rounded-xl bg-slate-100 text-slate-700 max-w-[80%]"><b>Công ty Nông sản Hòa Vang:</b> Bên em cần chuyển 6 tấn hàng đóng bao về Quy Nhơn chiều nay, ngân sách 3.400.000đ xe bác nhận được không ạ?</div>
+      <div class="p-2.5 rounded-xl bg-slate-100 text-slate-700 max-w-[85%]"><b>Hệ thống AI:</b> Đơn hàng 6 tấn nông sản nằm ngay trên trục đường quay đầu của xe bạn (lệch 2.8%).</div>
+      <div class="p-2.5 rounded-xl bg-slate-100 text-slate-700 max-w-[85%]"><b>Công ty Nông sản Hòa Vang:</b> Bên em cần chuyển 6 tấn hàng đóng bao về Quy Nhơn chiều nay, ngân sách 3.400.000đ xe bác nhận được không ạ?</div>
     `;
 
   document.getElementById('priceSummaryTitle').textContent = isShipper
@@ -630,8 +675,8 @@ function sendBidMessage() {
   const me = currentRole === 'shipper' ? 'Bạn (Chủ hàng)' : 'Bạn (Nhà xe)';
   const partner = currentRole === 'shipper' ? 'Nhà xe Hùng Phát' : 'Công ty Nông sản Hòa Vang';
   chat.innerHTML += `
-    <div class="p-2.5 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-100 max-w-[80%] ml-auto"><b>${me}:</b> Mình đề xuất chốt mức giá <b>${val.toLocaleString('vi-VN')} đ</b> nhé!</div>
-    <div class="p-2.5 rounded-xl bg-slate-100 text-slate-700 max-w-[80%]"><b>${partner}:</b> Đồng ý mức giá ${val.toLocaleString('vi-VN')} đ! Mời chuyển sang Ví ký quỹ Escrow để khóa đơn.</div>
+    <div class="p-2.5 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-100 max-w-[85%] ml-auto"><b>${me}:</b> Mình đề xuất chốt mức giá <b>${val.toLocaleString('vi-VN')} đ</b> nhé!</div>
+    <div class="p-2.5 rounded-xl bg-slate-100 text-slate-700 max-w-[85%]"><b>${partner}:</b> Đồng ý mức giá ${val.toLocaleString('vi-VN')} đ! Mời chuyển sang Ví ký quỹ Escrow để khóa đơn.</div>
   `;
   chat.scrollTop = chat.scrollHeight;
   updateBiddingByRole();
@@ -679,7 +724,7 @@ function fundEscrowNow() {
 }
 
 function signEPOD() {
-  document.getElementById('step3-badge').className = "w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold mt-0.5";
+  document.getElementById('step3-badge').className = "w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold mt-0.5 shrink-0";
   document.getElementById('payoutSuccessBox').classList.remove('hidden');
   const btn = document.getElementById('btnEPOD');
   btn.disabled = true;
@@ -720,7 +765,7 @@ function renderTrackingView() {
         <span class="absolute -left-[9px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${
           st.current ? 'bg-emerald-600 text-white ring-4 ring-emerald-100' : (st.done ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500')
         }">${st.done ? '<i class="fa-solid fa-check"></i>' : ''}</span>
-        <div class="flex justify-between items-center">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-0.5">
           <h5 class="text-xs font-extrabold ${st.done ? 'text-slate-900' : 'text-slate-400'}">${st.title}</h5>
           <span class="text-[11px] font-mono font-bold text-emerald-700">${st.time}</span>
         </div>
@@ -736,7 +781,7 @@ function renderTrackingView() {
           <span class="font-mono font-black text-base text-emerald-700">#${order.code}</span>
           <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">${order.escrowStatus}</span>
         </div>
-        <h3 class="text-lg font-black text-slate-900 mt-1">${order.route} · ${order.cargo}</h3>
+        <h3 class="text-base sm:text-lg font-black text-slate-900 mt-1">${order.route} · ${order.cargo}</h3>
       </div>
       <div class="sm:text-right">
         <span class="text-[10px] uppercase font-bold text-slate-400 block">Giá cước hợp đồng</span>
@@ -747,13 +792,13 @@ function renderTrackingView() {
     <div class="space-y-2">
       <div class="flex flex-wrap items-center justify-between gap-2 bg-emerald-50 border border-emerald-200 px-3.5 py-2.5 rounded-xl text-xs">
         <div class="flex items-center gap-2 font-bold text-emerald-900">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-ping"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-ping shrink-0"></span>
           <span>Khu vực hiện tại: <span class="underline">${order.province}</span></span>
         </div>
         <span class="text-[11px] text-emerald-700 font-semibold">Biển số: <b>${order.plate}</b></span>
       </div>
 
-      <div id="liveOrderMap" class="w-full h-64 sm:h-72 rounded-2xl border border-slate-300 overflow-hidden shadow-inner"></div>
+      <div id="liveOrderMap" class="w-full h-60 sm:h-72 rounded-2xl border border-slate-300 overflow-hidden shadow-inner"></div>
     </div>
 
     <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
@@ -764,7 +809,7 @@ function renderTrackingView() {
       <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
         <div class="bg-emerald-600 h-full rounded-full transition-all duration-500" style="width: ${order.progress}%"></div>
       </div>
-      <div class="flex justify-between text-[11px] text-slate-500 pt-1">
+      <div class="flex flex-col sm:flex-row justify-between text-[11px] text-slate-500 pt-1 gap-1">
         <span>Chủ hàng: <b>${order.shipper}</b></span>
         <span>${order.eta}</span>
       </div>
@@ -777,14 +822,14 @@ function renderTrackingView() {
 
     ${order.progress < 100 ? `
       <div class="pt-3 border-t border-slate-100 flex justify-end">
-        <button onclick="finishOrderTracking('${order.code}')" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition">
+        <button onclick="finishOrderTracking('${order.code}')" class="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition">
           ${isShipper ? 'Xác nhận nhận hàng & Ký e-POD' : 'Cập nhật: Đã giao hàng tới nơi'}
         </button>
       </div>
     ` : ''}
   `;
 
-  setTimeout(() => initOrderMap(order), 50);
+  setTimeout(() => initOrderMap(order), 80);
 }
 
 function initOrderMap(order) {
@@ -846,7 +891,7 @@ function initOrderMap(order) {
   `).openPopup();
 
   const bounds = L.latLngBounds([order.coords.origin, order.coords.current, order.coords.dest]);
-  trackingMapInstance.fitBounds(bounds, { padding: [35, 35] });
+  trackingMapInstance.fitBounds(bounds, { padding: [30, 30] });
 }
 
 function selectTracking(code) {
@@ -934,9 +979,9 @@ function switchAdminSubTab(subTab) {
   document.getElementById(`adm-panel-${subTab}`).classList.add('block');
 
   document.querySelectorAll('.adm-sub-btn').forEach(b => {
-    b.className = "adm-sub-btn px-4 py-2 rounded-xl text-xs font-extrabold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition";
+    b.className = "adm-sub-btn shrink-0 px-4 py-2 rounded-xl text-xs font-extrabold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition";
   });
-  document.getElementById(`adm-tab-${subTab}`).className = "adm-sub-btn px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 text-white transition";
+  document.getElementById(`adm-tab-${subTab}`).className = "adm-sub-btn shrink-0 px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-600 text-white transition";
 }
 
 function renderAdminDashboard() {
@@ -945,29 +990,28 @@ function renderAdminDashboard() {
   const totalPlatformFee = Math.round(totalEscrowValue * (systemConfig.platformFeePercent / 100));
 
   document.getElementById('adminKpiCards').innerHTML = `
-    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-      <span class="text-[11px] text-slate-400 font-bold uppercase">Tổng tài khoản User</span>
-      <div class="text-2xl font-black text-slate-900 mt-1">${usersDB.length} tài khoản</div>
-      <span class="text-xs text-emerald-600 font-bold">Chủ hàng, Nhà xe & Admin</span>
+    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <span class="text-[10px] sm:text-[11px] text-slate-400 font-bold uppercase">Tổng tài khoản User</span>
+      <div class="text-xl sm:text-2xl font-black text-slate-900 mt-1">${usersDB.length} tài khoản</div>
+      <span class="text-[11px] text-emerald-600 font-bold">Chủ hàng, Nhà xe & Admin</span>
     </div>
-    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-      <span class="text-[11px] text-slate-400 font-bold uppercase">Tổng tin đăng trên sàn</span>
-      <div class="text-2xl font-black text-emerald-700 mt-1">${totalPosts} tin đăng</div>
-      <span class="text-xs text-slate-500">${emptyTruckTrips.length} xe rỗng · ${shipperOrders.length} đơn hàng</span>
+    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <span class="text-[10px] sm:text-[11px] text-slate-400 font-bold uppercase">Tổng tin đăng sàn</span>
+      <div class="text-xl sm:text-2xl font-black text-emerald-700 mt-1">${totalPosts} tin đăng</div>
+      <span class="text-[11px] text-slate-500">${emptyTruckTrips.length} xe rỗng · ${shipperOrders.length} đơn hàng</span>
     </div>
-    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-      <span class="text-[11px] text-slate-400 font-bold uppercase">Tổng dòng tiền Ví Escrow</span>
-      <div class="text-2xl font-black text-blue-700 mt-1">${totalEscrowValue.toLocaleString('vi-VN')} đ</div>
-      <span class="text-xs text-blue-600 font-bold">${trackingList.length} hợp đồng vận chuyển</span>
+    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <span class="text-[10px] sm:text-[11px] text-slate-400 font-bold uppercase">Dòng tiền Ví Escrow</span>
+      <div class="text-xl sm:text-2xl font-black text-blue-700 mt-1">${totalEscrowValue.toLocaleString('vi-VN')} đ</div>
+      <span class="text-[11px] text-blue-600 font-bold">${trackingList.length} hợp đồng vận chuyển</span>
     </div>
-    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-      <span class="text-[11px] text-slate-400 font-bold uppercase">Doanh thu Phí sàn (${systemConfig.platformFeePercent}%)</span>
-      <div class="text-2xl font-black text-amber-600 mt-1">${totalPlatformFee.toLocaleString('vi-VN')} đ</div>
-      <span class="text-xs text-emerald-600 font-bold">Khấu trừ tự động qua e-POD</span>
+    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <span class="text-[10px] sm:text-[11px] text-slate-400 font-bold uppercase">Doanh thu sàn (${systemConfig.platformFeePercent}%)</span>
+      <div class="text-xl sm:text-2xl font-black text-amber-600 mt-1">${totalPlatformFee.toLocaleString('vi-VN')} đ</div>
+      <span class="text-[11px] text-emerald-600 font-bold">Khấu trừ tự động e-POD</span>
     </div>
   `;
 
-  // 1. Bảng quản lý Tin đăng
   const postsTbody = document.getElementById('adminPostsTableBody');
   postsTbody.innerHTML = '';
 
@@ -980,7 +1024,7 @@ function renderAdminDashboard() {
         <td class="p-3">${t.origin} ➔ ${t.dest}</td>
         <td class="p-3">${t.cargo} (${t.weight}T - ${t.type})</td>
         <td class="p-3 font-bold text-emerald-700">${t.price.toLocaleString('vi-VN')} đ</td>
-        <td class="p-3"><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Đã duyệt hiển thị</span></td>
+        <td class="p-3"><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Đã duyệt</span></td>
         <td class="p-3 text-right">
           <button onclick="adminDeletePost('truck', ${t.id})" class="px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg font-bold hover:bg-red-100">Xóa tin</button>
         </td>
@@ -997,7 +1041,7 @@ function renderAdminDashboard() {
         <td class="p-3">${o.origin} ➔ ${o.dest}</td>
         <td class="p-3">${o.cargo} (${o.weight}T - ${o.type})</td>
         <td class="p-3 font-bold text-emerald-700">${o.price.toLocaleString('vi-VN')} đ</td>
-        <td class="p-3"><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Đã duyệt hiển thị</span></td>
+        <td class="p-3"><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Đã duyệt</span></td>
         <td class="p-3 text-right">
           <button onclick="adminDeletePost('order', ${o.id})" class="px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg font-bold hover:bg-red-100">Xóa tin</button>
         </td>
@@ -1005,7 +1049,6 @@ function renderAdminDashboard() {
     `;
   });
 
-  // 2. Bảng quản lý Người dùng
   const usersTbody = document.getElementById('adminUsersTableBody');
   usersTbody.innerHTML = '';
   usersDB.forEach(u => {
@@ -1027,7 +1070,6 @@ function renderAdminDashboard() {
     `;
   });
 
-  // 3. Bảng quản lý Ký quỹ Escrow
   const escrowTbody = document.getElementById('adminEscrowTableBody');
   escrowTbody.innerHTML = '';
   trackingList.forEach(tr => {
@@ -1172,19 +1214,16 @@ function formatPlaceName(str) {
 function parseLogisticsText(rawText) {
   const val = rawText.toLowerCase();
 
-  // 1. Tải trọng
   let weightNum = 6.0;
   const matchTon = val.match(/(\d+(?:[.,]\d+)?)\s*(tấn|tan|t\b)/i);
   const matchKg = val.match(/(\d+(?:[.,]\d+)?)\s*(kg|ký|ki-lô)/i);
   if (matchTon) weightNum = parseFloat(matchTon[1].replace(',', '.'));
   else if (matchKg) weightNum = parseFloat((parseFloat(matchKg[1].replace(',', '.')) / 1000).toFixed(1));
 
-  // 2. Loại thùng xe
   let type = "Thùng bạt";
   if (val.includes("thùng kín") || val.includes("xe kín") || val.includes("kín")) type = "Thùng kín";
   else if (val.includes("đông lạnh") || val.includes("xe lạnh") || val.includes("cấp đông") || val.includes("bảo ôn")) type = "Đông lạnh";
 
-  // 3. Điểm xuất phát & Điểm đến (kèm vị trí cụ thể như KCN, cảng, quận/huyện)
   let origin = "Đà Nẵng";
   let dest = "Quy Nhơn";
   const routePattern = /(?:từ|ở|tại|xuất phát từ|rời|lấy hàng ở|bốc ở)\s+(.+?)\s+(?:đi|về|đến|ra|vào|tới|sang|qua|giao ở|trả ở)\s+(.+?)(?=\s+(?:chiều|sáng|tối|đêm|mai|hôm nay|ngày|lúc|bằng|xe|nhận|chở|gửi|cần|giá|với|tải trọng|\d+\s*tấn)|[.,;]|$)/i;
@@ -1238,7 +1277,6 @@ function parseLogisticsText(rawText) {
     }
   }
 
-  // 4. Loại mặt hàng
   let cargo = "Hàng bách hóa";
   const cargoKeywords = [
     { keys: ["nông sản", "lúa", "gạo", "ngô", "sắn", "khoai", "hạt điều", "cà phê", "tiêu", "rau củ"], label: "Nông sản" },
@@ -1378,7 +1416,7 @@ function toggleModalVoice() {
     rec.onresult = (e) => {
       const transcript = e.results[0][0].transcript;
       document.getElementById('modalAiInput').value = transcript;
-      statusEl.textContent = "Đã tự động điền form bằng AI!";
+      statusEl.textContent = "Đã tự động điền!";
       autoFillModalWithAI();
     };
     rec.onend = () => {

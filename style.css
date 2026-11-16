@@ -1,6 +1,15 @@
-/* Thiết lập font chữ & hiệu ứng chuyển động */
-html {
+/* Thiết lập font chữ & chống tràn ngang trên màn hình điện thoại */
+html, body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Chống trình duyệt iOS/Android tự động zoom khi chạm vào ô input trên điện thoại */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* Hiệu ứng nhịp đập khi đang thu âm qua Web Speech API */
@@ -34,7 +43,7 @@ html {
   animation: pulse-ring 1.8s infinite;
 }
 
-/* Đảm bảo bản đồ nằm dưới thanh Header sticky */
+/* Đảm bảo bản đồ nằm dưới thanh Header sticky và Bottom Bar */
 .leaflet-container {
   z-index: 10 !important;
   font-family: inherit !important;
